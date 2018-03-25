@@ -37,9 +37,6 @@ corpus.clean <- corpus %>%
 
 dtm <- DocumentTermMatrix(corpus.clean)
 
-dtm.train <- dtm[1:1500,]
-dtm.test <- dtm[1501:2000,]
-
 fivefreq <- findFreqTerms(dtm, 3)
 
 dtm.train.nb <- DocumentTermMatrix(corpus.clean, control=list(dictionary = fivefreq))
