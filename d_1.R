@@ -1,12 +1,15 @@
-library(tidyverse)
+library(readr)
+library(dplyr)
 library(caret)
 library(tm)
 
+print('Read data')
 # Set it to the folder.
-#setwd("~/Dropbox (Personal)/analytics_contest/")
-test_macro <- read_csv("campaign_data.csv")
-test_micro <- read_csv("test_BDIfz5B.csv")
+# setwd("~/Dropbox (Personal)/analytics_contest/")
+test_macro <- read_csv("/data/lord_machines/campaign_data.csv")
+test_micro <- read_csv("/data/lord_machines/test_BDIfz5B.csv")
 
+print('Clean')
 # Macro level classifier as the baseline. n=52
 
 # Training data.
@@ -21,6 +24,7 @@ colnames(train)[ncol(train)] <- 'y'
 train <- as.data.frame(train)
 train$y <- as.factor(train$y)
 
+print('train')
 # Train.
 fit <- train(y ~ ., data = train, method = 'bayesglm')
 
