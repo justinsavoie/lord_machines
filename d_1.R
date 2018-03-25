@@ -1,30 +1,83 @@
 library(readr)
+library(tm)
+library(RTextTools)
+library(e1071)
 library(dplyr)
 library(caret)
-library(tm)
 
 print('Read data')
-# Set it to the folder.
-# setwd("~/Dropbox (Personal)/analytics_contest/")
-test_macro <- read_csv("/data/lord_machines/campaign_data.csv")
-test_micro <- read_csv("/data/lord_machines/test_BDIfz5B.csv")
+sysinfo <- Sys.info()
+
+if (sysinfo[[8]]=="vpl_001"){
+  setwd("~/Dropbox (Personal)/analytics_contest/")
+  macro <- read_csv("campaign_data.csv")
+  test <- read_csv("test_BDIfz5B.csv")
+  train <- read_csv("train.csv")
+}
+
+if (sysinfo[[8]]!="vpl_001"){
+  test_macro <- read_csv("/data/lord_machines/campaign_data.csv")
+  test_micro <- read_csv("/data/lord_machines/test_BDIfz5B.csv")
+  train <- read_csv("/data/lord_machines/train.csv")
+}
+
+
 
 print('Clean')
 # Macro level classifier as the baseline. n=52
 
-# Training data.
-test_text <-test_macro$email_body
-test_corpus <- VCorpus(VectorSource(test_text))
+corpus <- Corpus(VectorSource(factor(macro$email_body)))
 
-tdm <- DocumentTermMatrix(test_corpus, list(removePunctuation = TRUE, stopwords = TRUE, stemming = TRUE, removeNumbers = TRUE))
+corpus.clean <- corpus %>%
+  tm_map(content_transformer(tolower)) %>% 
+  tm_map(removePunctuation) %>%
+  tm_map(removeNumbers) %>%
+  tm_map(removeWords, stopwords(kind="en")) %>%
+  tm_map(stripWhitespace)
 
-train <- as.matrix(tdm)
-train <- cbind(train, c(0:51))
-colnames(train)[ncol(train)] <- 'y'
-train <- as.data.frame(train)
-train$y <- as.factor(train$y)
+dtm <- DocumentTermMatrix(corpus.clean)
 
-print('train')
-# Train.
-fit <- train(y ~ ., data = train, method = 'bayesglm')
+dtm.train <- dtm[1:1500,]
+dtm.test <- dtm[1501:2000,]
+
+fivefreq <- findFreqTerms(dtm, 3)
+
+dtm.train.nb <- DocumentTermMatrix(corpus.clean, control=list(dictionary = fivefreq))
+
+# Function to convert the word frequencies to yes (presence) and no (absence) labels
+convert_count <- function(x) {
+  y <- ifelse(x > 0, 1,0)
+  y <- factor(y, levels=c(0,1), labels=c("No", "Yes"))
+  y
+}
+
+# Apply the convert_count function to get final training and testing DTMs
+trainNB <- apply(dtm.train.nb, 2, convert_count)
+trainNB <- data.frame(trainNB)
+trainNB$campaign_id <- macro$campaign_id
+train <- left_join(train, trainNB)
+
+train$is_click <- factor(train$is_click)
+train_train <- train %>% filter(campaign_id < 45)
+train_test <- train %>% filter(campaign_id >= 45)
+
+trainNB <- train_train %>% select(-is_open, 
+                          -is_click,
+                          -id, 
+                          -user_id, 
+                          -campaign_id, 
+                          -send_date)
+
+testNB <- train_test %>% select(-is_open, 
+                                  -is_click,
+                                  -id, 
+                                  -user_id, 
+                                  -campaign_id, 
+                                  -send_date)
+
+
+
+system.time(classifier <- naiveBayes(trainNB, train_train$is_click, laplace = 1))
+system.time( pred <- predict(classifier, newdata=testNB) )
+table("Predictions"= pred,  "Actual" = df.test$class )
 
