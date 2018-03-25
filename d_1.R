@@ -16,8 +16,8 @@ if (sysinfo[[8]]=="vpl_001"){
 }
 
 if (sysinfo[[8]]!="vpl_001"){
-  test_macro <- read_csv("/data/lord_machines/campaign_data.csv")
-  test_micro <- read_csv("/data/lord_machines/test_BDIfz5B.csv")
+  macro <- read_csv("/data/lord_machines/campaign_data.csv")
+  test <- read_csv("/data/lord_machines/test_BDIfz5B.csv")
   train <- read_csv("/data/lord_machines/train.csv")
 }
 
